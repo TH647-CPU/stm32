@@ -1,11 +1,10 @@
 /* key_app.c —— 恒流 LED 全功能应用层（推翻重来 · 全功能完整版）
  *
- * 功能（全部真正接通，无“未启用”半成品）：
+ * 功能（无外部显示器件，纯按键 + PWM + 恒流）：
  *   1) 恒流闭环：LED_ControlTick() 每 20ms 运行，把实测电流闭环稳定到目标值（20~200mA）
  *   2) 手动调光：KEY_DIM 短按循环 4 档亮度（100/75/50/25% → 200/150/100/50mA）
  *   3) 自动光控：KEY_MODE 切换，光敏 ADC 自动调目标电流（环境暗→亮，亮→暗），同样走恒流闭环
  *   4) 定时开关：KEY_DIM 长按(≥1s) 启动/关闭定时，到点自动关机
- *   5) 显示：数码管实时显示实测电流，OLED 显示 电流/目标/模式/开关/定时
  *
  * 按键（引脚见 bsp_key.h）：
  *   KEY_POWER(PB12) 短按  = 输出 开/关
@@ -18,8 +17,6 @@
 #include "bsp_adc.h"
 #include "bsp_light.h"
 #include "bsp_led.h"
-#include "Segment.h"
-#include "OLED.h"
 
 /* ===== 长按判定时间 ===== */
 #define KEYAPP_LONG_PRESS_MS    1000u   /* 长按 1 秒 */
@@ -44,7 +41,7 @@ static uint8_t  ka_timer_sec  = 0u;    /* 定时剩余秒（倒计时到 0 自�
 
 /* 调度时间戳 */
 static uint32_t ka_t_key = 0u, ka_t_light = 0u, ka_t_sec = 0u,
-                ka_t_led = 0u, ka_t_disp = 0u;
+                ka_t_led = 0u;
 
 /* KEY_DIM 长按检测 */
 static uint32_t ka_dim_t0    = 0u;   /* 按下起始时刻 */
@@ -60,7 +57,6 @@ static void ka_apply_output(void);     /* 把当前状态落到目标电流 */
 static void ka_light(void);            /* 自动光控：光敏→目标电流 */
 static void ka_timer_1s(void);         /* 定时每秒倒计时 */
 static void ka_handle_dim(uint32_t now);/* DIM 短按/长按区分 */
-static void ka_disp_refresh(void);     /* 刷新数码管电流 + OLED 状态 */
 
 /**
  * @brief  初始化按键、恒流、数码管、OLED
@@ -76,10 +72,7 @@ void KEY_AppInit(void)
     ka_target_ma  = ka_step_to_ma(ka_brightness);
     ka_timer_on   = 0u;
     ka_timer_sec  = 0u;
-    Segment_Init();                     /* 4 位数码管初始化 */
-    OLED_Init();                        /* OLED 初始化 */
     ka_apply_output();
-    ka_disp_refresh();
 }
 
 /**
@@ -127,16 +120,6 @@ void KEY_AppHandle(void)
             ka_t_sec = now;
             ka_timer_1s();
         }
-    }
-
-    /* 数码管动态扫描（每次刷一位，4 次一帧） */
-    Segment_Scan();
-
-    /* 200ms：刷新数码管电流 + OLED 状态 */
-    if ((now - ka_t_disp) >= 200u)
-    {
-        ka_t_disp = now;
-        ka_disp_refresh();
     }
 }
 
@@ -272,57 +255,6 @@ static void ka_handle_dim(uint32_t now)
                 ka_key_cycle();          /* 未达长按阈值 → 视为短按：循环档位 */
             }
         }
-    }
-}
-
-/* =====================================================================
- * 显示
- * ===================================================================== */
-
-/** 刷新数码管（实时电流）与 OLED（电流/目标/模式/开关/定时） */
-static void ka_disp_refresh(void)
-{
-    uint16_t ma = LED_GetMeas();         /* 实测电流 mA（恒流闭环已换算好） */
-
-    /* 数码管：实时显示实测电流 */
-    Segment_ShowNum(ma, 0);
-
-    /* OLED 行 1：实测电流 */
-    OLED_ShowString(1, 1, "I:   mA");
-    OLED_ShowNum(1, 3, ma, 3);
-
-    /* OLED 行 2：目标电流 */
-    OLED_ShowString(2, 1, "Tgt:");
-    OLED_ShowNum(2, 5, LED_GetTarget(), 3);
-    OLED_ShowString(2, 8, "mA");
-
-    /* OLED 行 3：模式 */
-    if (ka_auto_light != 0u)
-    {
-        OLED_ShowString(3, 1, "Mode:AUTO");
-    }
-    else
-    {
-        OLED_ShowString(3, 1, "Mode:MANU");
-    }
-
-    /* OLED 行 4：开关 + 定时 */
-    if (ka_power_on != 0u)
-    {
-        OLED_ShowString(4, 1, "PWR:ON ");
-    }
-    else
-    {
-        OLED_ShowString(4, 1, "PWR:OFF");
-    }
-    if (ka_timer_on != 0u)
-    {
-        OLED_ShowString(4, 9, "T:");
-        OLED_ShowNum(4, 11, ka_timer_sec, 2);
-    }
-    else
-    {
-        OLED_ShowString(4, 9, "T:--");
     }
 }
 

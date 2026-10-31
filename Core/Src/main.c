@@ -6,7 +6,6 @@
   *   STM32F103C8 · 5V 输入输出恒流 LED（20mA~200mA）
   *   · PWM 调光（TIM2_CH1/PA0）     · ADC 实时采样电流（ADC2/PA2）
   *   · 恒流闭环（PI 稳定到目标电流）· 自动光控（光敏 ADC1/PA1）· 定时开关
-  *   · 数码管实时显示电流 + OLED 状态显示
   *   · 3 键：PB12 开关 / PB13 手动↔自动光控 / PB14 短按档位·长按定时
   *
   *   烧录后默认：输出开、恒流闭环、目标 200mA → LED 直接亮。
@@ -33,7 +32,6 @@
 #include "bsp_light.h"
 #include "bsp_key.h"
 #include "bsp_led.h"
-#include "bsp_display.h"
 #include "key_app.h"
 /* USER CODE END Includes */
 
