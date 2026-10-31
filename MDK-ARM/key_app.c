@@ -40,8 +40,7 @@ static uint8_t  ka_step       = 0u;    /* 档位索引 0~3 */
 static uint8_t  ka_brightness = 100u;  /* 当前档位 % */
 static uint16_t ka_target_ma  = 200u;  /* 当前目标电流 mA */
 static uint8_t  ka_timer_on   = 0u;    /* 定时开关 */
-static uint16_t ka_timer_min  = 0u;    /* 定时剩余分钟 */
-static uint8_t  ka_timer_sec  = 0u;    /* 定时秒计数（满 60 分钟减 1） */
+static uint8_t  ka_timer_sec  = 0u;    /* 定时剩余秒（倒计时到 0 自动关机） */
 
 /* 调度时间戳 */
 static uint32_t ka_t_key = 0u, ka_t_light = 0u, ka_t_sec = 0u,
@@ -76,7 +75,6 @@ void KEY_AppInit(void)
     ka_brightness = 100u;               /* 上电默认第 1 档 100%（最亮） */
     ka_target_ma  = ka_step_to_ma(ka_brightness);
     ka_timer_on   = 0u;
-    ka_timer_min  = 0u;
     ka_timer_sec  = 0u;
     Segment_Init();                     /* 4 位数码管初始化 */
     OLED_Init();                        /* OLED 初始化 */
@@ -178,8 +176,7 @@ static void ka_timer_toggle(void)
     if (ka_timer_on == 0u)
     {
         ka_timer_on  = 1u;
-        ka_timer_min = KEYAPP_TMR_DEFAULT_MIN;   /* 默认 30 分钟 */
-        ka_timer_sec = 0u;
+        ka_timer_sec = KEYAPP_TMR_DEFAULT_SEC;   /* 默认 30 秒 */
         if (ka_power_on == 0u)
         {
             ka_power_on = 1u;      /* 开定时同时把输出打开 */
@@ -237,16 +234,11 @@ static void ka_timer_1s(void)
     {
         return;
     }
-    ka_timer_sec++;
-    if (ka_timer_sec >= 60u)
+    if (ka_timer_sec > 0u)
     {
-        ka_timer_sec = 0u;
-        if (ka_timer_min > 0u)
-        {
-            ka_timer_min--;
-        }
+        ka_timer_sec--;
     }
-    if ((ka_timer_min == 0u) && (ka_timer_sec == 0u))
+    if (ka_timer_sec == 0u)
     {
         ka_power_on = 0u;      /* 到时自动关机 */
         ka_timer_on = 0u;
@@ -326,7 +318,7 @@ static void ka_disp_refresh(void)
     if (ka_timer_on != 0u)
     {
         OLED_ShowString(4, 9, "T:");
-        OLED_ShowNum(4, 11, ka_timer_min, 2);
+        OLED_ShowNum(4, 11, ka_timer_sec, 2);
     }
     else
     {
@@ -339,5 +331,5 @@ uint8_t  KEYAPP_IsPowerOn(void)      { return ka_power_on; }
 uint8_t  KEYAPP_IsAutoLight(void)    { return ka_auto_light; }
 uint8_t  KEYAPP_GetDimMode(void)     { return 1u; }        /* 恒流闭环始终启用 */
 uint16_t KEYAPP_GetBrightness(void)  { return ka_brightness; }
-uint16_t KEYAPP_GetTimerMin(void)    { return ka_timer_min; }
+uint16_t KEYAPP_GetTimerMin(void)    { return ka_timer_sec; }
 uint8_t  KEYAPP_IsTimerRunning(void) { return ka_timer_on; }

@@ -17,10 +17,8 @@
 
 #include "stm32f1xx_hal.h"
 
-/* 定时参数 */
-#define KEYAPP_TMR_DEFAULT_MIN   30u   /* 默认定时分钟 */
-#define KEYAPP_TMR_MAX_MIN       99u
-#define KEYAPP_TMR_MIN_MIN       1u
+/* 定时参数：长按 KEY_DIM 启动后从该秒数倒计时，到 0 自动关机 */
+#define KEYAPP_TMR_DEFAULT_SEC   30u
 
 void KEY_AppInit(void);          /* 初始化按键与状态 */
 void KEY_AppHandle(void);        /* 主循环反复调用：扫键 + 处理 + 输出 */
