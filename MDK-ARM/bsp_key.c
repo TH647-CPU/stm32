@@ -19,25 +19,29 @@ static uint8_t  key_repeat[KEY_NUM];
 static uint16_t key_cnt[KEY_NUM];
 
 /**
- * @brief  初始化按键引脚（配置上/下拉，主动屏蔽噪声）
+ * @brief  初始化按键引脚（配置内部上拉，主动屏蔽噪声）
+ * @note   直接用寄存器配置（不依赖 HAL_GPIO_Init），确保上拉真正生效
  */
 void KEY_Init(void)
 {
-    GPIO_InitTypeDef gpio = {0};
     uint8_t i;
 
     /* 使能按键用到的 GPIO 时钟（GPIOA、GPIOB），避免未在 CubeMX 配置时无法使用 */
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
+    /* 直接寄存器配置 PB12/PB13/PB14 = 输入 + 内部上拉
+       F1 每脚在 CRH 占 4bit = CNF[3:2] MODE[1:0]
+       输入上拉/下拉 = CNF=10b、MODE=00b → 0b1000 = 0x8
+       PB12 offset 16 / PB13 20 / PB14 24 */
+    GPIOB->CRH &= ~(0xFu << 16);  GPIOB->CRH |= (0x8u << 16);   /* PB12 输入PU/PD */
+    GPIOB->CRH &= ~(0xFu << 20);  GPIOB->CRH |= (0x8u << 20);   /* PB13 输入PU/PD */
+    GPIOB->CRH &= ~(0xFu << 24);  GPIOB->CRH |= (0x8u << 24);   /* PB14 输入PU/PD */
+    /* F1 内部上拉由 ODR 位决定：置 1 = 上拉 */
+    GPIOB->BSRR = (GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14);
+
     for (i = 0u; i < KEY_NUM; i++)
     {
-        gpio.Pin  = key_pin[i];
-        gpio.Mode = GPIO_MODE_INPUT;
-        /* 低电平有效 -> 内部上拉；高电平有效 -> 内部下拉 */
-        gpio.Pull = KEY_ACTIVE_LOW ? GPIO_PULLUP : GPIO_PULLDOWN;
-        HAL_GPIO_Init(key_port[i], &gpio);
-
         key_edge[i]   = 0u;
         key_repeat[i] = 0u;
         key_cnt[i]    = 0u;
