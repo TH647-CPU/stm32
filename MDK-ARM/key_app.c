@@ -13,6 +13,8 @@
 #include "bsp_light.h"
 #include "bsp_led.h"
 #include "bsp_display.h"
+#include "Segment.h"
+#include "OLED.h"
 
 /* ===== 状态 ===== */
 static uint8_t  ka_power_on    = 1u;        /* 输出开关：1 开 0 关 */
@@ -26,7 +28,7 @@ static uint16_t ka_light_ccr   = 999u;      /* 最近一次光控算出的 PWM *
 static uint8_t  ka_step        = 0u;        /* 单键循环档位索引 0~3 */
 
 /* 调度时间戳 */
-static uint32_t ka_t_key = 0u, ka_t_light = 0u, ka_t_sec = 0u, ka_t_led = 0u;
+static uint32_t ka_t_key = 0u, ka_t_light = 0u, ka_t_sec = 0u, ka_t_led = 0u, ka_t_disp = 0u;
 
 /* ===== 内部函数 ===== */
 static void ka_key_power(void);     /* KEY_POWER  开关 */
@@ -35,6 +37,7 @@ static void ka_key_cycle(void);     /* KEY_DIM(PA5) 单键循环 4 档亮度 */
 static void ka_apply_output(void);  /* 把当前状态落到 PWM / 恒流输出 */
 static void ka_light(void);    /* 自动光控计算 */
 static void ka_timer_1s(void);      /* 定时每秒递减 */
+static void ka_disp_refresh(void);  /* 刷新数码管电流 + OLED 状态 */
 
 /**
  * @brief  初始化按键与按键处理状态
@@ -51,6 +54,9 @@ void KEY_AppInit(void)
     ka_timer_run  = 0u;
     ka_timer_sec  = 0u;
     ka_light_ccr  = 999u;
+    Segment_Init();             /* 4 位数码管初始化 */
+    OLED_Init();                /* OLED 初始化 */
+    ka_disp_refresh();          /* 上电先显示一次电流与状态 */
     ka_apply_output();
 }
 
@@ -106,6 +112,16 @@ void KEY_AppHandle(void)
             ka_t_led = now;
             LED_ControlTick();
         }
+    }
+
+    /* 数码管动态扫描（每次调用刷一位，4 次一帧，刷新率高不闪烁） */
+    Segment_Scan();
+
+    /* 200ms：刷新数码管实时电流 + OLED 状态 */
+    if ((now - ka_t_disp) >= 200u)
+    {
+        ka_t_disp = now;
+        ka_disp_refresh();
     }
 }
 
@@ -216,3 +232,48 @@ uint8_t  KEYAPP_GetDimMode(void)     { return ka_dim_mode; }
 uint16_t KEYAPP_GetBrightness(void)  { return ka_brightness; }
 uint16_t KEYAPP_GetTimerMin(void)    { return ka_timer_min; }
 uint8_t  KEYAPP_IsTimerRunning(void) { return ka_timer_run; }
+
+/* ===== 显示刷新：数码管实时电流 + OLED 状态 ===== */
+static void ka_disp_refresh(void)
+{
+    uint16_t ma;
+
+    /* 实测电流 mA = Rsense 上端电压 / Rsense = (ADC2 * 3300/4095) / 10Ω */
+    ma = (uint16_t)(((uint32_t)ADC2_Read() * 3300UL) / 4095UL / 10UL);
+    if (ma > 999)
+    {
+        ma = 999;
+    }
+
+    /* 数码管实时显示电流 mA */
+    Segment_ShowNum(ma, 0);
+
+    /* OLED 第 1 行：电流 */
+    OLED_ShowString(1, 1, "I:   mA");
+    OLED_ShowNum(1, 3, ma, 3);
+
+    /* OLED 第 2 行：亮度档位 */
+    OLED_ShowString(2, 1, "Dim:");
+    OLED_ShowNum(2, 5, ka_brightness, 3);
+    OLED_ShowString(2, 8, "%");
+
+    /* OLED 第 3 行：模式 */
+    if (ka_auto_light != 0u)
+    {
+        OLED_ShowString(3, 1, "Mode:AUTO");
+    }
+    else
+    {
+        OLED_ShowString(3, 1, "Mode:MANU");
+    }
+
+    /* OLED 第 4 行：开关 */
+    if (ka_power_on != 0u)
+    {
+        OLED_ShowString(4, 1, "PWR:ON ");
+    }
+    else
+    {
+        OLED_ShowString(4, 1, "PWR:OFF");
+    }
+}

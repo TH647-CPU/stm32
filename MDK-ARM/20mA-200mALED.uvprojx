@@ -474,6 +474,31 @@
               <FilePath>.\key_app.c</FilePath>
             </File>
             <File>
+              <FileName>Segment.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Segment.c</FilePath>
+            </File>
+            <File>
+              <FileName>Segment.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Segment.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\OLED.c</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\OLED.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED_Font.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\OLED_Font.h</FilePath>
+            </File>
+            <File>
               <FileName>bsp_led.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\bsp_led.c</FilePath>
