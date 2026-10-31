@@ -37,4 +37,8 @@ uint8_t KEY_IsPressed(uint8_t idx);
 /* 查询某个按键是否处于“长按连发”触发点（返回 1 后自动清零） */
 uint8_t KEY_IsHeld(uint8_t idx);
 
+/* 查询某个按键当前是否处于按下状态（读取滤波后的电平，不消耗标志）
+   用于区分“短按”和“长按” */
+uint8_t KEY_IsDown(uint8_t idx);
+
 #endif /* __BSP_KEY_H */

@@ -111,3 +111,9 @@ uint8_t KEY_IsHeld(uint8_t idx)
     key_repeat[idx] = 0u;
     return r;
 }
+
+uint8_t KEY_IsDown(uint8_t idx)
+{
+    if (idx >= KEY_NUM) return 0u;
+    return key_state[idx];
+}
